@@ -1,0 +1,80 @@
+@startuml
+title НРИ-Помощник (офлайн) — Контекстная диаграмма
+
+' ---------- Layout ----------
+left to right direction
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam dpi 150
+
+' ---------- Colors ----------
+!define BLUE #0B4A7F
+!define BLUE_DARK #083B66
+!define GRAY #8C8C8C
+
+' ---------- Common styles ----------
+skinparam ArrowColor #4A4A4A
+skinparam ArrowThickness 1.2
+skinparam RoundCorner 12
+
+skinparam rectangle {
+  BorderColor #2B2B2B
+  FontColor white
+  BackgroundColor BLUE
+}
+
+' Persons (top cards)
+skinparam rectangle<<person>> {
+  BackgroundColor BLUE_DARK
+  BorderColor BLUE_DARK
+  FontSize 16
+  Padding 18
+}
+
+' System inner block
+skinparam rectangle<<system>> {
+  BackgroundColor BLUE
+  BorderColor BLUE
+  FontSize 16
+  Padding 18
+}
+
+' System boundary dashed
+skinparam rectangle<<boundary>> {
+  BackgroundColor transparent
+  BorderColor #6B6B6B
+  BorderStyle dashed
+  FontColor #2B2B2B
+  FontSize 14
+  Padding 14
+}
+
+' ---------- Elements ----------
+rectangle "<size:20><&user></size>\n\n<b>Ведущий (Мастер)</b>\n\nОрганизует сессию,\nуправляет ходом игры" <<person>> as GM
+
+rectangle "<size:20><&user></size>\n\n<b>Игрок</b>\n\nСоздаёт лист персонажа,\nвыгружает файл и\nпередаёт мастеру" <<person>> as P
+
+rectangle "<b>НРИ-Помощник (офлайн)</b>\n[system]" <<boundary>> as BOUNDARY {
+  rectangle "<b>Приложение НРИ</b>\n\nОфлайн-инструмент:\nрасчёты, журнал, экспорт,\nправила, заметки" <<system>> as APP
+}
+
+' optional: external file channel (если хочешь явно показывать передачу)
+rectangle "Канал передачи файла\n(мессенджер/почта/флешка)" as CH
+
+' ---------- Relations (like in picture) ----------
+GM --> APP : Управление сессией,\nнастройка правил,\nведение боя, заметки,\nимпорт листов
+
+P --> APP : Создание листа персонажа\n(в приложении)
+P --> CH : Экспорт/выгрузка файла листа
+CH --> GM : Передача файла листа\nдля импорта в библиотеку
+
+' ---------- Legend (bottom-right style) ----------
+legend right
+  <b>Legend</b>
+  |<back:BLUE_DARK><color:white> person </color></back>|
+  |<back:BLUE><color:white> system </color></back>|
+  |<back:white><color:#2B2B2B> external person </color></back>|
+  |<back:#D9D9D9><color:#2B2B2B> external system </color></back>|
+endlegend
+
+@enduml
