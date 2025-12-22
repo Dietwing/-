@@ -1,0 +1,104 @@
+@startuml
+title C4 Level 3 — Components: Application Services (учёт ручных правок ГМ)
+
+left to right direction
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam dpi 150
+skinparam RoundCorner 12
+skinparam ArrowColor #4A4A4A
+skinparam ArrowThickness 1.2
+
+!define BLUE #0B4A7F
+!define BLUE_MID #0E5F9E
+!define GRAY #6B6B6B
+
+skinparam rectangle {
+  BorderColor #2B2B2B
+  FontColor white
+  BackgroundColor BLUE
+}
+
+skinparam rectangle<<boundary>> {
+  BackgroundColor transparent
+  BorderColor GRAY
+  BorderStyle dashed
+  FontColor #2B2B2B
+  FontSize 13
+  Padding 12
+}
+
+skinparam rectangle<<uc>> {
+  BackgroundColor BLUE_MID
+  BorderColor BLUE_MID
+  FontSize 12
+  Padding 12
+}
+
+skinparam rectangle<<comp>> {
+  BackgroundColor BLUE
+  BorderColor BLUE
+  FontSize 12
+  Padding 12
+}
+
+rectangle "<b>Application Services</b>\n[container]" <<boundary>> as APP {
+
+  rectangle "<b>CreateSheet UC</b>\nсоздание листа" <<uc>> as UC1
+  rectangle "<b>ImportCharacter UC</b>\nимпорт листа" <<uc>> as UC2
+  rectangle "<b>ManageLibrary UC</b>\nперсонажи/NPC" <<uc>> as UC3
+
+  rectangle "<b>RunCombat UC</b>\nведение боя" <<uc>> as UC4
+  rectangle "<b>ManualAdjustStats UC</b>\nручная правка ГМ:\nHP/статы/эффекты" <<uc>> as UC4M
+
+  rectangle "<b>SessionLog UC</b>\nсобытия сессии" <<uc>> as UC5
+  rectangle "<b>RulesAccess UC</b>\nправила" <<uc>> as UC6
+  rectangle "<b>Notes UC</b>\nзаметки" <<uc>> as UC7
+
+  rectangle "<b>Role Guard</b>\nограничение ролей" <<comp>> as GUARD
+  rectangle "<b>Transaction Manager</b>\nграницы операций" <<comp>> as TX
+}
+
+rectangle "UI (Desktop)\n[container]" as UI
+rectangle "Domain Core\n[container]\n(внутри есть Override)" as DOMAIN
+rectangle "Import/Export\n[container]" as IEX
+rectangle "Rules Reference\n[container]" as RULES
+rectangle "Notebook\n[container]" as NOTES
+rectangle "Persistence\n[container]" as PERSIST
+
+' Доступ и вызовы
+UI --> GUARD : запрос действия
+GUARD --> UC1 : игрок/мастер
+GUARD --> UC2 : мастер
+GUARD --> UC3 : мастер
+GUARD --> UC4 : мастер
+GUARD --> UC4M : мастер
+GUARD --> UC5 : мастер
+GUARD --> UC6 : мастер
+GUARD --> UC7 : мастер
+
+' Основные потоки
+UI --> UC4 : команды боя\n(ход/раунд)
+UI --> UC4M : ручная правка\n(из экрана боя)
+
+' Транзакции
+UC4 --> TX
+UC4M --> TX
+UC2 --> TX
+UC3 --> TX
+UC7 --> TX
+
+' Интеграции
+UC4 --> DOMAIN : шаги боя\n(по механике)
+UC4M --> DOMAIN : override HP/статов\n(вручную)
+
+UC4 --> PERSIST : сохранить состояние боя\nи события
+UC4M --> PERSIST : сохранить изменения\nи событие override
+
+UC2 --> IEX : импорт/валидация
+UC2 --> PERSIST : добавить в библиотеку
+UC6 --> RULES : открыть/искать
+UC7 --> NOTES : CRUD заметок
+UC3 --> PERSIST : load/save библиотеку
+
+@enduml
