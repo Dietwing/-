@@ -1,0 +1,81 @@
+@startuml
+title C4 Level 3 — Components: Import/Export (лист игрока → библиотека мастера)
+
+left to right direction
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam dpi 150
+skinparam RoundCorner 12
+skinparam ArrowColor #4A4A4A
+skinparam ArrowThickness 1.2
+
+!define BLUE #0B4A7F
+!define BLUE_MID #0E5F9E
+!define GRAY #6B6B6B
+
+skinparam rectangle {
+  BorderColor #2B2B2B
+  FontColor white
+  BackgroundColor BLUE
+}
+
+skinparam rectangle<<boundary>> {
+  BackgroundColor transparent
+  BorderColor GRAY
+  BorderStyle dashed
+  FontColor #2B2B2B
+  FontSize 13
+  Padding 12
+}
+
+skinparam rectangle<<comp>> {
+  BackgroundColor BLUE
+  BorderColor BLUE
+  FontSize 12
+  Padding 12
+}
+
+skinparam rectangle<<core>> {
+  BackgroundColor BLUE_MID
+  BorderColor BLUE_MID
+  FontSize 12
+  Padding 12
+}
+
+rectangle "<b>Import / Export</b>\n[container]" <<boundary>> as IEX {
+
+  rectangle "<b>Export Service</b>\nподготовка данных\nдля выгрузки" <<core>> as EXS
+
+  rectangle "<b>Import Service</b>\nзагрузка данных\nв систему" <<core>> as IMS
+
+  rectangle "<b>Schema Versioning</b>\nверсия и миграции\nформата" <<comp>> as VER
+
+  rectangle "<b>Serializer</b>\nJSON encode/decode" <<comp>> as SER
+
+  rectangle "<b>PDF Generator</b>\n(опционально)\nпечать/просмотр" <<comp>> as PDF
+
+  rectangle "<b>File Validator</b>\nвалидация файла:\nсхема, поля, типы" <<comp>> as FVAL
+
+  rectangle "<b>Error Mapper</b>\nчитаемые ошибки\nдля UI" <<comp>> as ERR
+}
+
+rectangle "Канал передачи файла\n(внешняя среда)" as CH
+rectangle "Application Services\n[container]\n(из Level 2)" as APP
+rectangle "Domain Core\n[container]\n(из Level 2)" as DOMAIN
+rectangle "Persistence\n[container]\n(из Level 2)" as PERSIST
+
+APP --> EXS : команда на экспорт
+EXS --> SER : сериализация JSON
+EXS --> VER : проставляет версию
+EXS --> PDF : генерирует PDF\n(если нужно)
+EXS --> CH : отдаёт файл наружу
+
+CH --> IMS : файл от игрока
+IMS --> FVAL : проверка корректности
+FVAL --> VER : проверка версии/миграции
+IMS --> SER : десериализация JSON
+IMS --> DOMAIN : сборка доменной модели
+IMS --> PERSIST : сохранение в библиотеку
+IMS --> ERR : ошибки импорта\nдля UI
+
+@enduml
