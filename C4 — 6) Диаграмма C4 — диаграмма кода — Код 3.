@@ -1,0 +1,123 @@
+@startuml
+title C4 Level 4 (Code) — Import/Export: JSON Schema, Versioning, Validation, Errors
+
+left to right direction
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam RoundCorner 10
+skinparam ArrowColor #4A4A4A
+skinparam DefaultFontSize 12
+
+' ==== EXPORT/IMPORT SERVICES ====
+class ExportService {
+  -serializer: JsonSerializer
+  -versioning: SchemaVersioning
+  -validator: FileValidator
+  +exportCharacter(c: Character): Bytes
+  +exportPdf(c: Character): Bytes
+}
+
+class ImportService {
+  -serializer: JsonSerializer
+  -versioning: SchemaVersioning
+  -validator: FileValidator
+  -errors: ErrorMapper
+  +importFile(file: Bytes): Character
+}
+
+' ==== SERIALIZATION ====
+class JsonSerializer {
+  +encode(dto: CharacterFileDTO): Bytes
+  +decode(file: Bytes): CharacterFileDTO
+}
+
+' ==== VERSIONING / MIGRATIONS ====
+class SchemaVersioning {
+  +currentVersion(): int
+  +ensureSupported(v: int): void
+  +migrate(dto: CharacterFileDTO): CharacterFileDTO
+}
+
+' ==== VALIDATION ====
+class FileValidator {
+  +validate(dto: CharacterFileDTO): ValidationResult
+}
+
+class ValidationResult {
+  +ok: bool
+  +errors: List<String>
+}
+
+' ==== ERROR MAPPING ====
+class ErrorMapper {
+  +toUserMessage(ex: Exception): String
+}
+
+' ==== DTOs (file format) ====
+class CharacterFileDTO {
+  +meta: FileMetaDTO
+  +sheet: CharacterSheetDTO
+}
+
+class FileMetaDTO {
+  +schemaVersion: int
+  +exportedAt: DateTime
+  +appId: String
+}
+
+class CharacterSheetDTO {
+  +name: String
+  +stats: Map<StatKey,int>
+  +hpCurrent: int
+  +hpMax: int
+  +effects: List<EffectDTO>
+}
+
+class EffectDTO {
+  +effectId: String
+  +stacks: int
+  +expiresAtRound: int?
+}
+
+class StatKey
+
+' ==== PDF (optional) ====
+class PdfGenerator {
+  +render(dto: CharacterSheetDTO): Bytes
+}
+
+' ==== Persistence boundary (куда попадает импорт) ====
+interface CharacterRepository {
+  +upsert(c: Character): void
+}
+
+class ImportToLibraryAdapter {
+  -repo: CharacterRepository
+  +saveImported(c: Character): UUID
+}
+
+' ==== Domain type ====
+class Character
+
+' ==== RELATIONS ====
+ExportService ..> JsonSerializer
+ExportService ..> SchemaVersioning
+ExportService ..> FileValidator
+ExportService ..> PdfGenerator
+
+ImportService ..> JsonSerializer
+ImportService ..> SchemaVersioning
+ImportService ..> FileValidator
+ImportService ..> ErrorMapper
+
+JsonSerializer ..> CharacterFileDTO
+CharacterFileDTO *-- FileMetaDTO
+CharacterFileDTO *-- CharacterSheetDTO
+CharacterSheetDTO o-- EffectDTO
+
+ImportToLibraryAdapter ..> CharacterRepository
+ImportToLibraryAdapter ..> Character
+
+ImportService ..> ImportToLibraryAdapter : (вызов из UC)\nпосле успешного импорта
+
+@enduml
