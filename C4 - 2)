@@ -1,0 +1,280 @@
+@startuml
+title C4 Level 4 (Code) — Domain Core: Characters, Combat, Rules, Override, Events
+
+left to right direction
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam RoundCorner 10
+skinparam ArrowColor #4A4A4A
+skinparam DefaultFontSize 12
+
+' ====== ENTITIES / AGGREGATES ======
+class Character {
+  +id: UUID
+  +name: String
+  +stats: Stats
+  +resources: Resources
+  +effects: List<EffectInstance>
+  --
+  +applyDamage(amount: int): void
+  +heal(amount: int): void
+  +setStat(key: StatKey, value: int): void
+  +addEffect(effect: EffectInstance): void
+  +removeEffect(effectId: UUID): void
+}
+
+class NPC {
+  +id: UUID
+  +name: String
+  +archetype: String
+  +stats: Stats
+  +resources: Resources
+  +effects: List<EffectInstance>
+}
+
+class Stats {
+  +values: Map<StatKey,int>
+  --
+  +get(key: StatKey): int
+  +set(key: StatKey, value: int): void
+  +modify(key: StatKey, delta: int): void
+}
+
+class Resources {
+  +hpCurrent: int
+  +hpMax: int
+  +mana: int
+  --
+  +setHP(current: int, max: int): void
+}
+
+enum StatKey {
+  STR
+  DEX
+  CON
+  INT
+  WIS
+  CHA
+}
+
+class EffectDefinition {
+  +id: String
+  +name: String
+  +durationPolicy: DurationPolicy
+  +modifiers: List<Modifier>
+}
+
+class EffectInstance {
+  +instanceId: UUID
+  +definitionId: String
+  +source: String
+  +expiresAtRound: int
+  +stacks: int
+}
+
+enum DurationPolicy {
+  INSTANT
+  UNTIL_END_OF_TURN
+  UNTIL_END_OF_ROUND
+  PERSISTENT
+}
+
+class Modifier {
+  +key: StatKey
+  +delta: int
+  +type: ModifierType
+}
+
+enum ModifierType {
+  FLAT
+  MULTIPLIER
+}
+
+' ====== COMBAT MODEL ======
+class Encounter {
+  +id: UUID
+  +participants: List<ParticipantRef>
+  +turnOrder: TurnOrder
+  +state: CombatState
+  +round: int
+  --
+  +start(): void
+  +nextTurn(): void
+  +end(): void
+}
+
+class ParticipantRef {
+  +entityId: UUID
+  +kind: ParticipantKind
+}
+
+enum ParticipantKind {
+  CHARACTER
+  NPC
+}
+
+class TurnOrder {
+  +entries: List<TurnEntry>
+  +activeIndex: int
+  --
+  +active(): TurnEntry
+  +advance(): TurnEntry
+  +setOrder(entries: List<TurnEntry>): void
+}
+
+class TurnEntry {
+  +participant: ParticipantRef
+  +initiative: int
+}
+
+enum CombatState {
+  NOT_STARTED
+  IN_PROGRESS
+  FINISHED
+}
+
+' ====== RULES / ACTIONS ======
+class RulesEngine {
+  +validate(action: ActionCommand, ctx: CombatContext): ValidationResult
+  +apply(action: ActionCommand, ctx: CombatContext): ActionResult
+}
+
+class CombatContext {
+  +encounterId: UUID
+  +round: int
+  +active: ParticipantRef
+  +targets: List<ParticipantRef>
+}
+
+class ActionCommand {
+  +actor: ParticipantRef
+  +type: ActionType
+  +payload: Map<String,Any>
+}
+
+enum ActionType {
+  ATTACK
+  CAST
+  USE_ITEM
+  DEFEND
+  MOVE
+  CUSTOM
+}
+
+class ActionResult {
+  +events: List<DomainEvent>
+  +changes: List<StateChange>
+}
+
+class StateChange {
+  +entityId: UUID
+  +description: String
+}
+
+' ====== CALCULATION ======
+class InteractionCalculator {
+  +computeDamage(actor: Character, target: Character, roll: RollResult, mods: List<Modifier>): int
+  +computeModifiers(actor: Character, ctx: CombatContext): List<Modifier>
+}
+
+' ====== DICE FACADE ======
+interface IRng {
+  +nextInt(min: int, max: int): int
+}
+
+class DiceFacade {
+  -rng: IRng
+  +roll(expr: DiceExpression): RollResult
+}
+
+class DiceExpression {
+  +count: int
+  +sides: int
+  +bonus: int
+  +raw: String
+}
+
+class RollResult {
+  +total: int
+  +rolls: List<int>
+  +expression: String
+}
+
+' ====== MANUAL OVERRIDE ======
+class StatOverrideService {
+  +setHP(entityId: UUID, hp: int, reason: String): DomainEvent
+  +setStat(entityId: UUID, key: StatKey, value: int, reason: String): DomainEvent
+  +applyEffect(entityId: UUID, effectId: String, reason: String): DomainEvent
+  +removeEffect(entityId: UUID, effectInstanceId: UUID, reason: String): DomainEvent
+}
+
+' ====== VALIDATION ======
+class Validator {
+  +validateHP(hp: int): ValidationResult
+  +validateStat(key: StatKey, value: int): ValidationResult
+  +validateAction(action: ActionCommand, ctx: CombatContext): ValidationResult
+}
+
+class ValidationResult {
+  +ok: bool
+  +errors: List<String>
+}
+
+' ====== DOMAIN EVENTS ======
+abstract class DomainEvent {
+  +eventId: UUID
+  +occurredAt: DateTime
+  +type: String
+}
+
+class ActionPerformedEvent extends DomainEvent {
+  +actor: ParticipantRef
+  +actionType: ActionType
+}
+
+class DamageAppliedEvent extends DomainEvent {
+  +target: ParticipantRef
+  +amount: int
+}
+
+class RoundEndedEvent extends DomainEvent {
+  +encounterId: UUID
+  +round: int
+}
+
+class StatManuallyAdjustedEvent extends DomainEvent {
+  +target: ParticipantRef
+  +field: String
+  +oldValue: String
+  +newValue: String
+  +reason: String
+}
+
+' ====== RELATIONS ======
+Encounter *-- TurnOrder
+TurnOrder *-- TurnEntry
+Encounter o-- ParticipantRef
+TurnEntry o-- ParticipantRef
+
+Character *-- Stats
+Character *-- Resources
+Character o-- EffectInstance
+EffectInstance ..> EffectDefinition
+EffectDefinition o-- Modifier
+
+RulesEngine ..> InteractionCalculator
+RulesEngine ..> Validator
+RulesEngine ..> DiceFacade
+RulesEngine ..> DomainEvent
+InteractionCalculator ..> RollResult
+
+DiceFacade ..> IRng
+DiceFacade ..> DiceExpression
+DiceFacade ..> RollResult
+
+StatOverrideService ..> Validator
+StatOverrideService ..> DomainEvent
+StatOverrideService ..> Character
+StatOverrideService ..> Encounter : (optional)\ncombat context
+
+@enduml
