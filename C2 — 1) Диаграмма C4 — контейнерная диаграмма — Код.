@@ -1,0 +1,101 @@
+@startuml
+title НРИ-Помощник (офлайн) — Контейнерная диаграмма (C4 Level 2)
+
+left to right direction
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam dpi 150
+skinparam RoundCorner 12
+skinparam ArrowColor #4A4A4A
+skinparam ArrowThickness 1.2
+
+!define BLUE #0B4A7F
+!define BLUE_DARK #083B66
+!define BLUE_MID #0E5F9E
+!define GRAY #6B6B6B
+
+skinparam rectangle {
+  BorderColor #2B2B2B
+  FontColor white
+  BackgroundColor BLUE
+}
+
+skinparam rectangle<<person>> {
+  BackgroundColor BLUE_DARK
+  BorderColor BLUE_DARK
+  FontSize 15
+  Padding 16
+}
+
+skinparam rectangle<<boundary>> {
+  BackgroundColor transparent
+  BorderColor GRAY
+  BorderStyle dashed
+  FontColor #2B2B2B
+  FontSize 13
+  Padding 12
+}
+
+skinparam rectangle<<core>> {
+  BackgroundColor BLUE_MID
+  BorderColor BLUE_MID
+  FontSize 13
+  Padding 14
+}
+
+skinparam rectangle<<external>> {
+  BackgroundColor #D9D9D9
+  BorderColor #A0A0A0
+  FontColor #2B2B2B
+  FontSize 12
+  Padding 12
+}
+
+' ==== Пользователи ====
+rectangle "<b>Игрок</b>\nСоздание листа\nЭкспорт файла" <<person>> as P
+rectangle "<b>Гейммастер</b>\nВедение сессии\nБой, правила, заметки" <<person>> as GM
+
+' ==== Система ====
+rectangle "<b>НРИ-Помощник (офлайн)</b>\n[system]" <<boundary>> as SYS {
+
+  rectangle "<b>UI (Desktop)</b>\nОкна и формы\nдля игрока и мастера" as UI
+
+  rectangle "<b>Application Services</b>\nСценарии использования\n(Use Cases)" as APP
+
+  rectangle "<b>Domain Core</b>\nПерсонажи, NPC,\nбоевая логика,\nсобытия" <<core>> as DOMAIN
+
+  rectangle "<b>Dice / RNG</b>\nБроски кубов\nслучайность" <<core>> as RNG
+
+  rectangle "<b>Rules Reference</b>\nПоиск и просмотр\nправил" as RULES
+
+  rectangle "<b>Notebook</b>\nЗаметки мастера\nпо сессии" as NOTES
+
+  rectangle "<b>Import / Export</b>\nЭкспорт листа\nИмпорт персонажей\n(JSON / PDF)" as IEX
+
+  rectangle "<b>Persistence</b>\nРабота с данными\nи хранилищем" as PERSIST
+}
+
+' ==== Внешняя среда ====
+rectangle "Локальная файловая система\nJSON / SQLite" <<external>> as FS
+rectangle "Материалы правил\n(книги, файлы)" <<external>> as RM
+rectangle "Канал передачи файла\n(мессенджер и т.п.)" <<external>> as CH
+
+' ==== Связи ====
+P --> UI : создаёт лист
+GM --> UI : управляет игрой
+
+UI --> APP : действия пользователя
+APP --> DOMAIN : доменная логика
+DOMAIN --> RNG : броски кубов
+
+APP --> RULES : доступ к правилам
+APP --> NOTES : заметки
+
+APP --> IEX : экспорт / импорт
+IEX --> CH : передача файла
+
+APP --> PERSIST : сохранить / загрузить
+PERSIST --> FS : JSON / SQLite
+RULES --> RM : чтение контента
+
+@enduml
