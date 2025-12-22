@@ -1,0 +1,185 @@
+@startuml
+title C4 Level 4 (Code) — Application Services: Use Cases, Roles, Transactions
+
+left to right direction
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam RoundCorner 10
+skinparam ArrowColor #4A4A4A
+skinparam DefaultFontSize 12
+
+' ==== ROLE CONTROL ====
+enum UserRole {
+  PLAYER
+  GM
+}
+
+class RoleGuard {
+  +assertAllowed(role: UserRole, action: String): void
+}
+
+' ==== TRANSACTIONS ====
+interface IUnitOfWork {
+  +begin(): void
+  +commit(): void
+  +rollback(): void
+}
+
+interface Action {
+  +run(): void
+}
+
+class TransactionManager {
+  -uow: IUnitOfWork
+  +runInTx(action: Action): void
+}
+
+' ==== REPOSITORIES (Persistence boundary) ====
+interface CharacterRepository {
+  +save(c: Character): void
+  +get(id: UUID): Character
+  +upsert(c: Character): void
+}
+
+interface EncounterRepository {
+  +save(e: Encounter): void
+  +get(id: UUID): Encounter
+}
+
+interface NotesRepository {
+  +save(n: Note): void
+  +list(sessionId: UUID): List<Note>
+}
+
+interface SessionLogRepository {
+  +append(sessionId: UUID, ev: DomainEvent): void
+  +list(sessionId: UUID): List<DomainEvent>
+}
+
+' ==== DOMAIN FACADES (Domain Core) ====
+class CombatService {
+  -rules: RulesEngine
+  -encRepo: EncounterRepository
+  -logRepo: SessionLogRepository
+  +processTurn(encounterId: UUID, cmd: ActionCommand): ActionResult
+  +nextTurn(encounterId: UUID): void
+}
+
+class ManualAdjustService {
+  -override: StatOverrideService
+  -charRepo: CharacterRepository
+  -logRepo: SessionLogRepository
+  +setHP(targetId: UUID, hp: int, reason: String): void
+  +setStat(targetId: UUID, key: StatKey, value: int, reason: String): void
+}
+
+' ==== USE CASES ====
+class RunCombatUC {
+  -guard: RoleGuard
+  -tx: TransactionManager
+  -combat: CombatService
+  +execute(role: UserRole, encounterId: UUID, cmd: ActionCommand): ActionResult
+}
+
+class ManualAdjustStatsUC {
+  -guard: RoleGuard
+  -tx: TransactionManager
+  -manual: ManualAdjustService
+  +setHP(role: UserRole, targetId: UUID, hp: int, reason: String): void
+  +setStat(role: UserRole, targetId: UUID, key: StatKey, value: int, reason: String): void
+}
+
+class ImportCharacterUC {
+  -guard: RoleGuard
+  -tx: TransactionManager
+  -importer: ImportService
+  -charRepo: CharacterRepository
+  +execute(role: UserRole, file: Bytes): UUID
+}
+
+class CreateSheetUC {
+  -guard: RoleGuard
+  -tx: TransactionManager
+  -charRepo: CharacterRepository
+  +execute(role: UserRole, dto: CharacterSheetDTO): UUID
+}
+
+class RulesAccessUC {
+  -guard: RoleGuard
+  -rules: RulesIndex
+  +search(role: UserRole, query: String): List<RuleHit>
+}
+
+class NotesUC {
+  -guard: RoleGuard
+  -tx: TransactionManager
+  -notesRepo: NotesRepository
+  +add(role: UserRole, note: Note): void
+}
+
+' ==== DTO / Notes / Rules minimal ====
+class CharacterSheetDTO {
+  +name: String
+  +stats: Map<StatKey,int>
+  +hp: int
+}
+
+class Note {
+  +id: UUID
+  +sessionId: UUID
+  +text: String
+  +createdAt: DateTime
+}
+
+class RulesIndex {
+  +search(q: String): List<RuleHit>
+}
+
+class RuleHit {
+  +title: String
+  +ref: String
+}
+
+' ==== Import/Export boundary ====
+class ImportService {
+  +importFile(file: Bytes): Character
+}
+
+' ==== DOMAIN TYPES (referenced stubs) ====
+class Character
+class Encounter
+class RulesEngine
+class StatOverrideService
+class ActionCommand
+class ActionResult
+class DomainEvent
+class StatKey
+
+' ==== RELATIONS ====
+TransactionManager ..> IUnitOfWork
+TransactionManager ..> Action
+
+RunCombatUC ..> RoleGuard
+RunCombatUC ..> TransactionManager
+RunCombatUC ..> CombatService
+
+ManualAdjustStatsUC ..> RoleGuard
+ManualAdjustStatsUC ..> TransactionManager
+ManualAdjustStatsUC ..> ManualAdjustService
+
+CombatService ..> RulesEngine
+CombatService ..> EncounterRepository
+CombatService ..> SessionLogRepository
+
+ManualAdjustService ..> StatOverrideService
+ManualAdjustService ..> CharacterRepository
+ManualAdjustService ..> SessionLogRepository
+
+CreateSheetUC ..> CharacterRepository
+ImportCharacterUC ..> ImportService
+ImportCharacterUC ..> CharacterRepository
+
+NotesUC ..> NotesRepository
+RulesAccessUC ..> RulesIndex
+
+@enduml
