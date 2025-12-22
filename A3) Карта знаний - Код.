@@ -1,0 +1,78 @@
+@startuml
+skinparam package {
+  backgroundColor #E8F5E9
+  borderColor #2E7D32
+  fontStyle bold
+}
+skinparam rectangle {
+  backgroundColor #FFFFFF
+  borderColor #2E7D32
+  roundCorner 10
+  shadowing false
+}
+
+title НРИ-помощник (офлайн)\nКарта знаний прикладной информационной системы
+
+package "Общая характеристика системы" as general {
+  rectangle "Тип системы:\nПрикладная ИС\nЛокального назначения\nОфлайн-использование" as type
+  rectangle "Назначение:\nПоддержка НРИ\nСопровождение сессий" as purpose
+}
+
+package "Методическая основа" as methodology {
+  rectangle "Понятийная база\nзаконодательства\nв сфере информации" as law
+  rectangle "Системные и\nархитектурные принципы\nИС" as principles
+}
+
+package "Пользовательские роли" as roles {
+  rectangle "Гейммастер\n(основной пользователь)" as gm
+  rectangle "Игроки\n(ограниченное участие)" as players
+}
+
+package "Функциональные возможности" as functions {
+  rectangle "Управление персонажами\nи NPC" as characters
+  rectangle "Сопровождение боевых\nи игровых событий" as events
+  rectangle "Работа с правилами\nи справочниками" as rules
+  rectangle "Заметки и фиксация\nхода игры" as notes
+}
+
+package "Архитектура системы" as architecture {
+  rectangle "Локальная архитектура\nбез клиент-серверной модели" as arch
+  rectangle "Хранение данных:\nJSON / SQLite" as storage
+  rectangle "Модульная структура\nфункциональных блоков" as modules
+}
+
+package "Ограничения и границы" as limits {
+  rectangle "Отсутствие сетевого\nвзаимодействия" as offline
+  rectangle "Не обрабатывает ПДн\nв юридически значимом объёме" as pd
+  rectangle "Не интегрируется\nс внешними ИС" as integration
+}
+
+package "Цель проекта" as goal {
+  rectangle "Систематизация и\nупрощение управления\nигровым процессом НРИ" as main_goal
+}
+
+' Связи
+general --> methodology
+general --> roles
+roles --> functions
+functions --> architecture
+architecture --> limits
+methodology --> architecture
+architecture --> goal
+functions --> goal
+
+note right of methodology
+Используется как
+методическая рамка,
+а не как источник
+обязательных требований
+end note
+
+note bottom of limits
+Проект не относится
+к государственным
+информационным системам
+end note
+
+@enduml
+
